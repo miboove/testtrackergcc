@@ -34,6 +34,37 @@ export function matches(it,c){
   let sc=0; st.forEach(w=>it_.has(w)&&sc++);
   return sc>=Math.min(2,st.size);
 }
+// --- Cardmarket : première version, non testée en direct (le site n'a pas pu être inspecté depuis cet environnement) ---
+// Approche volontairement souple : on lit le texte de la page plutôt que des sélecteurs CSS précis, pour résister
+// aux détails de mise en forme qu'on ne connaît pas encore (même logique que le repli utilisé pour GCC).
+
+// Étape 1, exécutée dans la page de résultats de recherche : liste les fiches produit candidates.
+export const parseCardmarketSearch = function () {
+  const links = [...document.querySelectorAll('a[href*="/Products/Singles/"]')];
+  const seen = new Set();
+  return links.map(a => ({ href: a.href, text: a.innerText.trim() }))
+    .filter(x => x.text && !seen.has(x.href) && seen.add(x.href))
+    .slice(0, 15);
+};
+
+// Étape 2, exécutée sur la fiche produit : repère les lignes de prix et regarde si une mention de gradation
+// (PSA/CGC/BGS/SGC + note) apparaît dans les quelques lignes qui précèdent (structure habituelle d'un tableau d'annonces).
+export const parseCardmarketArticles = function () {
+  const GR = /\b(PSA|CGC|BGS|SGC|ACE)\s*([\d.]+)\b/i;
+  const L = document.body.innerText.split('\n').map(s => s.trim()).filter(Boolean);
+  const priceRe = /^([\d][\d.,]*)\s*€$/;
+  const out = [];
+  L.forEach((line, i) => {
+    const pm = line.match(priceRe);
+    if (!pm) return;
+    const ctx = L.slice(Math.max(0, i - 6), i + 1).join(' ');
+    const gm = ctx.match(GR);
+    if (!gm) return;
+    out.push({ price: pm[1], co: gm[1].toUpperCase(), grade: parseFloat(gm[2]), context: ctx.slice(0, 140) });
+  });
+  return out;
+};
+
 // Lecture d'une carte GCC, exécutée DANS la page via page.evaluate (même logique que content.js, validée sur le vrai site).
 export const parseGccPage=function(){
   const SEP=/[•·‧∙⋅|]/g;
