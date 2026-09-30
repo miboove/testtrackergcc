@@ -88,12 +88,12 @@ function render(){
             <div class="price">${x.price}<span class="cur"> €</span></div>
             ${x.val!=null ? `<div class="gainbox">
               <div class="gain" style="color:${stripe}">${x.gain>=0?'+':''}${x.gain} €</div>
-              <div class="maxp">max conseillé ${x.maxP} € · marché ≈ ${x.val} €</div>
+              <div class="maxp">max conseillé ${x.maxP} € · ${x.estimate?'annonces Cardmarket':'ventes eBay'} ≈ ${x.val} €</div>
             </div>` : `<div class="err">${x.err||'Pas de données'}</div>`}
           </div>
           ${x.sales&&x.sales.length ? `<div class="sales">${x.sales.map(s=>`${s.d} : ${s.eur} €`).join(' &nbsp;·&nbsp; ')}</div>` : ''}
           <div class="foot">
-            <span>${end ? end.label : '—'}${x.n?` <span class="conf">${x.n} vente${x.n>1?'s':''} · ${x.conf}</span>`:''}</span>
+            <span>${end ? end.label : '—'}${x.n?` <span class="conf">${x.n} ${x.estimate?'annonce':'vente'}${x.n>1?'s':''} · ${x.conf}${x.estimate?' · prix demandés, pas confirmés':''}</span>`:''}</span>
           </div>
         </div>
       </div>
