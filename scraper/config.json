@@ -1,0 +1,7 @@
+{
+  "marginPct": 20,
+  "feePct": 0,
+  "horizonHours": 48,
+  "maxCards": 60,
+  "delayMs": 1800
+}
