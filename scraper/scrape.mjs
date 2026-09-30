@@ -37,7 +37,9 @@ async function ebayValue(page, c, rates) {
 }
 
 async function main() {
-  const browser = await chromium.launch();
+  // --disable-dev-shm-usage : la mémoire partagée par défaut des conteneurs GitHub Actions (64 Mo) est trop
+  // petite pour Chromium et le fait planter ("Page crashed") après quelques pages ; on le force à utiliser /tmp à la place.
+  const browser = await chromium.launch({ args: ['--disable-dev-shm-usage', '--disable-gpu'] });
   const gccPage = await browser.newPage({ locale: 'fr-FR' });
   console.log('Ouverture de GCC…');
   await gccPage.goto('https://gradedcardcenter.com/filtres/auctions', { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -53,10 +55,20 @@ async function main() {
   console.log(`${cards.length} enchères retenues (horizon ${CFG.horizonHours} h, max ${CFG.maxCards}).`);
 
   const rates = { EUR: 1, USD: await fx('USD'), GBP: await fx('GBP') };
-  const ebayPage = await browser.newPage({ locale: 'fr-FR' });
+  let ebayPage = await browser.newPage({ locale: 'fr-FR' });
   const results = [];
-  for (const c of cards) {
-    const r = await ebayValue(ebayPage, c, rates);
+  for (const [i, c] of cards.entries()) {
+    let r = await ebayValue(ebayPage, c, rates);
+    if (r.err && /crash/i.test(r.err)) { // la page a planté : on la remplace et on retente une fois
+      console.log('  (page relancée après un crash)');
+      try { await ebayPage.close(); } catch (_) {}
+      ebayPage = await browser.newPage({ locale: 'fr-FR' });
+      r = await ebayValue(ebayPage, c, rates);
+    }
+    if (i > 0 && i % 15 === 0) { // recycle périodique : évite l'accumulation de mémoire sur de longs scans
+      try { await ebayPage.close(); } catch (_) {}
+      ebayPage = await browser.newPage({ locale: 'fr-FR' });
+    }
     let row = { href: c.href, title: c.title, game: c.game, price: c.price, endTs: c.endTs, co: c.co, grade: c.grade, lang: c.lang };
     if (r.eur) {
       const cost = c.price * (1 + CFG.feePct / 100);
