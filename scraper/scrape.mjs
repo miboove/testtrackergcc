@@ -17,14 +17,16 @@ async function fx(cur) {
 async function ebayValue(page, c, rates) {
   const q = [c.co ? c.co + ' ' + c.grade : '', c.name, c.numFull, c.set, c.lang === 'japanese' ? 'japan' : c.lang].join(' ').trim();
   const url = `https://www.ebay.fr/sch/i.html?_nkw=${encodeURIComponent(q)}&LH_Sold=1&LH_Complete=1&_sop=13&_ipg=60`;
+  if (c._debug) console.log('  URL testée :', url);
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
     await page.waitForTimeout(1200);
     const html = await page.content();
     if (/captcha|pardon our interruption/i.test(html.slice(0, 4000))) return { err: 'bloqué' };
-    const found = items(html).map(extract).filter(Boolean)
-      .filter(it => matches(it, { name: c.name, set: c.set, num: c.num, lang: c.lang === 'japanese' ? 'japan' : c.lang, co: c.co, grade: c.grade }));
-    if (!found.length) return { err: 'aucune vente comparable' };
+    const raw = items(html).map(extract).filter(Boolean);
+    if (c._debug && raw.length === 0) console.log('  --- extrait HTML (diagnostic) ---\n' + html.replace(/\s+/g,' ').slice(0, 1500) + '\n  --- fin extrait ---');
+    const found = raw.filter(it => matches(it, { name: c.name, set: c.set, num: c.num, lang: c.lang === 'japanese' ? 'japan' : c.lang, co: c.co, grade: c.grade }));
+    if (!found.length) return { err: `aucune vente comparable (${raw.length} annonces lues, ${raw[0] ? '1ère: "' + raw[0].title.slice(0,60) + '"' : 'page vide, taille HTML=' + html.length} )` };
     const eur = found.map(it => ({ ...it, eur: fixAmount(it.amount) * (rates[it.cur] || 1) })).filter(x => x.eur > 0);
     eur.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const top = eur.slice(0, 8), vals = top.map(x => x.eur);
@@ -58,6 +60,7 @@ async function main() {
   let ebayPage = await browser.newPage({ locale: 'fr-FR' });
   const results = [];
   for (const [i, c] of cards.entries()) {
+    if (i === 0) c._debug = true; // affiche l'URL et un extrait de la page pour la toute première carte, à titre de diagnostic
     let r = await ebayValue(ebayPage, c, rates);
     if (r.err && /crash/i.test(r.err)) { // la page a planté : on la remplace et on retente une fois
       console.log('  (page relancée après un crash)');
