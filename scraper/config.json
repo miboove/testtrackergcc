@@ -3,5 +3,7 @@
   "feePct": 0,
   "horizonHours": 48,
   "maxCards": 60,
-  "delayMs": 1800
+  "delayMs": 1800,
+  "useEbay": false,
+  "useCardmarket": true
 }
