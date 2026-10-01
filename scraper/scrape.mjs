@@ -46,8 +46,28 @@ async function cardmarketValue(page, c, debug) {
   try {
     await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
     await page.waitForTimeout(1500);
+    // Ferme un éventuel bandeau cookies qui pourrait bloquer le rendu des résultats (fréquent sur les sites européens).
+    for (const txt of ['Accepter', 'Accept', 'J\'accepte', 'OK', 'Tout accepter']) {
+      try { await page.getByRole('button', { name: txt, exact: false }).first().click({ timeout: 1500 }); await page.waitForTimeout(800); break; } catch (_) {}
+    }
     const candidates = await page.evaluate(parseCardmarketSearch);
-    if (!candidates.length) return { err: 'aucun produit trouvé sur Cardmarket' };
+    if (!candidates.length) {
+      if (debug) {
+        const diag = await page.evaluate(() => ({
+          title: document.title, url: location.href,
+          bodyLen: document.body.innerText.length,
+          snippet: document.body.innerText.replace(/\s+/g, ' ').slice(0, 500),
+          nLinks: document.querySelectorAll('a').length,
+          someHrefs: [...document.querySelectorAll('a[href]')].slice(0, 10).map(a => a.getAttribute('href'))
+        }));
+        console.log('  --- diagnostic Cardmarket (aucun produit) ---');
+        console.log('  titre page:', diag.title, '| url finale:', diag.url, '| longueur texte:', diag.bodyLen, '| nb liens:', diag.nLinks);
+        console.log('  extrait texte:', diag.snippet);
+        console.log('  exemples de liens:', JSON.stringify(diag.someHrefs));
+        console.log('  --- fin diagnostic ---');
+      }
+      return { err: 'aucun produit trouvé sur Cardmarket' };
+    }
     // on choisit la fiche produit dont le titre recoupe le mieux le nom/set/numéro de la carte
     const target = tk(c.name + ' ' + c.set + ' ' + c.numFull);
     let best = candidates[0], bestScore = -1;
