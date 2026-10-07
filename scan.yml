@@ -2,8 +2,8 @@ name: Scan GCC
 
 on:
   schedule:
-    - cron: '*/30 * * * *'   # toutes les 30 minutes (heure UTC)
-  workflow_dispatch: {}       # bouton "Run workflow" manuel dans l'onglet Actions
+    - cron: '0 * * * *'   # toutes les heures, à l'heure pile (UTC)
+  workflow_dispatch: {}    # bouton "Run workflow" manuel dans l'onglet Actions
 
 permissions:
   contents: write
@@ -33,6 +33,10 @@ jobs:
 
       - name: Lancer le scan
         working-directory: scraper
+        env:
+          PROXY_SERVER: ${{ secrets.PROXY_SERVER }}
+          PROXY_USERNAME: ${{ secrets.PROXY_USERNAME }}
+          PROXY_PASSWORD: ${{ secrets.PROXY_PASSWORD }}
         run: node scrape.mjs
 
       - name: Publier data.json
