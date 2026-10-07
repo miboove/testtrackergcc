@@ -43,6 +43,7 @@ async function ebayValue(page, c) {
     if (/attention required|sorry, you have been blocked/i.test(html.slice(0, 2000))) return { err: 'bloqué (pare-feu)' };
     const raw = items(html).map(extract).filter(Boolean);
     if (c._debug) console.log(`  ${raw.length} annonces lues sur la page.`);
+    if (c._debug && raw.length === 0) console.log('  --- extrait HTML (diagnostic) ---\n  ' + html.replace(/\s+/g, ' ').slice(0, 1200) + '\n  --- fin extrait ---');
     const found = raw.filter(it => matches(it, { name: c.name, set: c.set, num: c.num, lang: c.lang === 'japanese' ? 'japan' : c.lang, co: c.co, grade: c.grade }));
     if (!found.length) return { err: `aucune vente comparable (${raw.length} annonces lues)` };
     const eur = found.map(it => ({ ...it, eur: fixAmount(it.amount) * (RATES[it.cur] || 1) })).filter(x => x.eur > 0);
@@ -59,6 +60,7 @@ async function ebayValue(page, c) {
 let RATES = { EUR: 1, USD: 1, GBP: 1 };
 
 async function main() {
+  console.log('Secrets détectés : PROXY_SERVER=' + (!!process.env.PROXY_SERVER) + ' | PROXY_USERNAME=' + (!!process.env.PROXY_USERNAME) + ' | PROXY_PASSWORD=' + (!!process.env.PROXY_PASSWORD));
   const launchArgs = { args: ['--disable-dev-shm-usage', '--disable-gpu'] };
   if (process.env.PROXY_SERVER) {
     launchArgs.proxy = { server: process.env.PROXY_SERVER, username: process.env.PROXY_USERNAME, password: process.env.PROXY_PASSWORD };
