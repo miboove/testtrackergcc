@@ -84,6 +84,17 @@ async function main() {
   }
   const browser = await chromium.launch(launchArgs);
 
+  // Vérifie l'IP de sortie réellement utilisée par le navigateur — confirme si le trafic passe vraiment par le proxy.
+  try {
+    const ipPage = await browser.newPage();
+    await ipPage.goto('https://api.ipify.org?format=json', { timeout: 15000 });
+    const ipInfo = await ipPage.textContent('body');
+    console.log('IP de sortie utilisée pour naviguer :', ipInfo);
+    await ipPage.close();
+  } catch (e) {
+    console.log('Impossible de vérifier l\'IP de sortie :', e.message || e);
+  }
+
   const gccPage = await browser.newPage({ locale: 'fr-FR' });
   await blockHeavyAssets(gccPage);
   console.log('Ouverture de GCC…');
