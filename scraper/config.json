@@ -4,5 +4,5 @@
   "horizonHours": 48,
   "maxCards": 60,
   "delayMs": 1500,
-  "cacheHours": 6
+  "cacheHours": 0
 }
