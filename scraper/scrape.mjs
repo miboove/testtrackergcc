@@ -61,6 +61,8 @@ let RATES = { EUR: 1, USD: 1, GBP: 1 };
 
 async function main() {
   console.log('Secrets détectés : PROXY_SERVER=' + (!!process.env.PROXY_SERVER) + ' | PROXY_USERNAME=' + (!!process.env.PROXY_USERNAME) + ' | PROXY_PASSWORD=' + (!!process.env.PROXY_PASSWORD));
+  console.log('Variables d\'env. contenant "PROXY" (noms seulement) :', JSON.stringify(Object.keys(process.env).filter(k => /proxy/i.test(k))));
+  console.log('Nombre total de variables d\'environnement reçues :', Object.keys(process.env).length);
   const launchArgs = { args: ['--disable-dev-shm-usage', '--disable-gpu'] };
   if (process.env.PROXY_SERVER) {
     launchArgs.proxy = { server: process.env.PROXY_SERVER, username: process.env.PROXY_USERNAME, password: process.env.PROXY_PASSWORD };
