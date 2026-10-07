@@ -31,19 +31,26 @@ async function blockHeavyAssets(page) {
   });
 }
 
+let debugDumps = 0; // limite le nombre d'extraits HTML dumpés sur tout le scan (pour ne pas noyer le log)
+
 async function ebayValue(page, c) {
   const q = [c.co ? c.co + ' ' + c.grade : '', c.name, c.numFull, c.set, c.lang === 'japanese' ? 'japan' : c.lang].join(' ').trim();
   const url = `https://www.ebay.fr/sch/i.html?_nkw=${encodeURIComponent(q)}&LH_Sold=1&LH_Complete=1&_sop=13&_ipg=60`;
-  if (c._debug) console.log('  URL testée :', url);
+  console.log('  requête :', q);
+  console.log('  URL testée :', url);
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
     await page.waitForTimeout(1000);
     const html = await page.content();
+    console.log(`  HTML reçu : ${html.length} caractères, titre de page : ${(html.match(/<title[^>]*>([^<]*)</i) || [])[1] || '(aucun)'}`);
     if (/captcha|pardon our interruption/i.test(html.slice(0, 4000))) return { err: 'bloqué (anti-robot)' };
     if (/attention required|sorry, you have been blocked/i.test(html.slice(0, 2000))) return { err: 'bloqué (pare-feu)' };
     const raw = items(html).map(extract).filter(Boolean);
-    if (c._debug) console.log(`  ${raw.length} annonces lues sur la page.`);
-    if (c._debug && raw.length === 0) console.log('  --- extrait HTML (diagnostic) ---\n  ' + html.replace(/\s+/g, ' ').slice(0, 1200) + '\n  --- fin extrait ---');
+    console.log(`  ${raw.length} annonces lues sur la page.`);
+    if (raw.length === 0 && debugDumps < 5) {
+      debugDumps++;
+      console.log('  --- extrait HTML (diagnostic #' + debugDumps + ') ---\n  ' + html.replace(/\s+/g, ' ').slice(0, 2000) + '\n  --- fin extrait ---');
+    }
     const found = raw.filter(it => matches(it, { name: c.name, set: c.set, num: c.num, lang: c.lang === 'japanese' ? 'japan' : c.lang, co: c.co, grade: c.grade }));
     if (!found.length) return { err: `aucune vente comparable (${raw.length} annonces lues)` };
     const eur = found.map(it => ({ ...it, eur: fixAmount(it.amount) * (RATES[it.cur] || 1) })).filter(x => x.eur > 0);
