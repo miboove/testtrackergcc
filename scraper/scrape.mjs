@@ -27,7 +27,7 @@ async function fx(cur) {
 async function blockHeavyAssets(page) {
   await page.route('**/*', route => {
     const t = route.request().resourceType();
-    (t === 'image' || t === 'font' || t === 'media' || t === 'stylesheet') ? route.abort() : route.continue();
+    (t === 'image' || t === 'font' || t === 'media') ? route.abort() : route.continue();
   });
 }
 
@@ -76,6 +76,17 @@ async function main() {
   await gccPage.waitForTimeout(2000);
   let cards = await gccPage.evaluate(parseGccPage);
   console.log(`${cards.length} enchères lues sur GCC.`);
+  if (cards.length === 0) {
+    const diag = await gccPage.evaluate(() => ({
+      title: document.title, url: location.href, bodyLen: document.body.innerText.length,
+      snippet: document.body.innerText.replace(/\s+/g, ' ').slice(0, 500),
+      nItemLinks: document.querySelectorAll('a[href*="/item/"]').length
+    }));
+    console.log('  --- diagnostic GCC (0 carte) ---');
+    console.log('  titre:', diag.title, '| url:', diag.url, '| texte:', diag.bodyLen, 'car. | liens /item/ :', diag.nItemLinks);
+    console.log('  extrait:', diag.snippet);
+    console.log('  --- fin diagnostic ---');
+  }
   await gccPage.close();
 
   cards = cards.filter(c => !c.endTs || c.endTs <= Date.now() + CFG.horizonHours * 3600000)
