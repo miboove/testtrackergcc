@@ -42,9 +42,14 @@ async function ebayValue(page, c) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
     await page.waitForTimeout(1000);
     const html = await page.content();
-    console.log(`  HTML reçu : ${html.length} caractères, titre de page : ${(html.match(/<title[^>]*>([^<]*)</i) || [])[1] || '(aucun)'}`);
-    if (/captcha|pardon our interruption/i.test(html.slice(0, 4000))) return { err: 'bloqué (anti-robot)' };
+    const pageTitle = (html.match(/<title[^>]*>([^<]*)</i) || [])[1] || '(aucun)';
+    console.log(`  HTML reçu : ${html.length} caractères, titre de page : ${pageTitle}`);
+    // eBay renvoie plusieurs variantes de blocage selon les cas : page d'erreur générique anti-robot (~1800
+    // caractères), mur "pare-feu" Attention Required, ou redirection forcée vers la page de connexion
+    // (une recherche normale n'exige jamais de se connecter).
+    if (/error page/i.test(pageTitle) || /captcha|pardon our interruption/i.test(html.slice(0, 4000))) return { err: 'bloqué (anti-robot)' };
     if (/attention required|sorry, you have been blocked/i.test(html.slice(0, 2000))) return { err: 'bloqué (pare-feu)' };
+    if (/se connecter ou s'inscrire|sign in or register/i.test(pageTitle)) return { err: 'bloqué (redirigé vers la connexion)' };
     const raw = items(html).map(extract).filter(Boolean);
     console.log(`  ${raw.length} annonces lues sur la page.`);
     if (raw.length === 0 && debugDumps < 5) {
